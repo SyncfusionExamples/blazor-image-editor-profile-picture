@@ -1,5 +1,6 @@
 # Blazor-Image-Editor-Profile-Picture
 A quick-start project that helps you how to implement Profile Picture in Blazor Image Editor Component. 
+
 Online examples: https://blazor.syncfusion.com/demos/image-editor/profile?theme=fluent
 
 # Project prerequisites
