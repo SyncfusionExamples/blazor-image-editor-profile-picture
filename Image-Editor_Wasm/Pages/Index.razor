@@ -1,0 +1,266 @@
+﻿@page "/"
+
+@using Syncfusion.Blazor.ImageEditor
+@using Syncfusion.Blazor.Popups
+@inject IJSRuntime jsRuntime
+
+<div class="control-section" style="height: 500px">
+    <input type="file" id="img-upload" style="display:none" accept="image/*" />
+    <div class="e-profile e-img-editor-sample e-hide">
+        <div class="e-custom-wrapper">
+            <canvas id="img-canvas" style="max-width: 200px; max-height: 200px;"></canvas>
+            <img alt="img" id="custom-img" crossorigin="anonymous" src="profile.png" style="display: none;" @onload="onLoad" />
+            <span id="custom-edit" class="e-custom-edit" contenteditable="false" @onclick="Edit">
+                <span class="e-custom-icon e-image-editor-icons" contenteditable="false"></span>
+            </span>
+        </div>
+    </div>
+    <SfDialog Header="Edit Profile Image" @bind-Visible="Visibility" ShowCloseIcon="true" Width="340px" Height="400px">
+        <DialogEvents Opened="dialogOpened" Closed="dialogClosed"></DialogEvents>
+        <DialogTemplates>
+            <Content>
+                <div class="dialogContent">
+                    @if (isOpened)
+                    {
+                        <SfImageEditor @ref="Image" Toolbar="@toolbar">
+                            <ImageEditorEvents FileOpened="FileOpened" Created="Created"></ImageEditorEvents>
+                        </SfImageEditor>
+                    }
+                </div>
+            </Content>
+        </DialogTemplates>
+        <DialogButtons>
+            <DialogButton Content="Open" CssClass="e-custom-img-btn e-img-custom-open" OnClick="OpenBtnClick"></DialogButton>
+            <DialogButton Content="Reset" CssClass="e-custom-img-btn e-img-custom-reset" OnClick="ResetBtnClick"></DialogButton>
+            <DialogButton Content="Rotate" CssClass="e-custom-img-btn e-img-custom-rotate" OnClick="RotateBtnClick"></DialogButton>
+            <DialogButton Content="Apply" CssClass="e-custom-img-btn e-img-custom-apply" IsPrimary="true" OnClick="ApplyBtnClick"></DialogButton>
+        </DialogButtons>
+    </SfDialog>
+</div>
+
+@code {
+
+    SfImageEditor Image;
+    private DotNetObjectReference<Index>? objRef;
+    private List<ImageEditorToolbarItemModel> toolbar = new List<ImageEditorToolbarItemModel>() { };
+    private bool Visibility { get; set; } = false;
+    private string? dataUrl;
+    private bool isOpened { get; set; }
+    protected override void OnInitialized()
+    {
+        objRef = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Task.Delay(100);
+            await jsRuntime.InvokeAsync<bool>("canvasInterop.onInitialized");
+        }
+    }
+
+    private async Task onLoad()
+    {
+        await jsRuntime.InvokeAsync<bool>("canvasInterop.imageLoaded", objRef);
+    }
+
+    private async void Edit()
+    {
+        this.Visibility = true;
+        dataUrl = await jsRuntime.InvokeAsync<string>("canvasInterop.getImageSource");
+    }
+
+    private void dialogOpened(OpenEventArgs args)
+    {
+        if (!isOpened)
+        {
+            isOpened = true;
+            StateHasChanged();
+        }
+    }
+
+    private void dialogClosed(CloseEventArgs args)
+    {
+        isOpened = false;
+    }
+
+    private async Task Created()
+    {
+        await Image.OpenAsync(dataUrl);
+    }
+
+    private async Task FileOpened()
+    {
+        await Image.SelectAsync("circle");
+    }
+
+    private async void OpenBtnClick()
+    {
+        await jsRuntime.InvokeAsync<bool>("canvasInterop.fileSelect");
+    }
+
+    private async void ResetBtnClick()
+    {
+        await Image.ResetAsync();
+        await Image.SelectAsync("circle");
+    }
+
+    private async void ApplyBtnClick()
+    {
+        await Image.CropAsync();
+        await jsRuntime.InvokeAsync<bool>("canvasInterop.applyImage");
+        Visibility = false;
+        isOpened = false;
+        StateHasChanged();
+    }
+
+    private async void RotateBtnClick()
+    {
+        await Image.RotateAsync(90);
+    }
+
+    [JSInvokable]
+    public async void FileSelected(string URL)
+    {
+        await Image.OpenAsync(URL);
+        await Task.Delay(100);
+        await Image.SelectAsync("circle");
+    }
+}
+
+
+
+<style>
+
+    .e-toolbar .e-toolbar-items.e-tbar-pos .e-toolbar-center {
+        margin: 0 auto !important;
+    }
+
+    .e-ie-toolbar-upload-div.e-hide,
+    .e-ie-toolbar-upload-btn.e-hide {
+        display: none;
+    }
+
+    .e-img-editor-sample,
+    .e-img-editor-sample .control-wrapper {
+        position: relative;
+    }
+
+    .e-profile {
+        margin-left: 80px;
+        width: 200px;
+        height: 200px;
+        position: absolute;
+        left: 50%;
+        -webkit-transform: translate(-50%, 30%);
+        transform: translate(-50%, 30%);
+        border-radius: 50%;
+    }
+
+    .e-custom-wrapper {
+        position: relative;
+    }
+
+    .e-custom-edit {
+        position: absolute;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: blue;
+        top: calc(100% - 54px);
+        left: calc(100% - 47px);
+    }
+
+    .e-custom-icon::before {
+        content: '\e701';
+        font-size: 18px;
+        color: white;
+        left: 10px;
+        top: 8px;
+        position: absolute;
+    }
+
+    @@font-face {
+        font-family: 'image-editor-icon';
+        src: url(data:application/x-font-ttf;charset=utf-8;base64,AAEAAAAKAIAAAwAgT1MvMj1uSfMAAAEoAAAAVmNtYXDnEedWAAABiAAAADZnbHlmB3Wi8wAAAcgAAABcaGVhZCQ9nc8AAADQAAAANmhoZWEIUQQDAAAArAAAACRobXR4CAAAAAAAAYAAAAAIbG9jYQAuAAAAAAHAAAAABm1heHABDwAmAAABCAAAACBuYW1lakQFAwAAAiQAAAIlcG9zdMWlnX0AAARMAAAAMQABAAAEAAAAAFwEAAAAAAAD9AABAAAAAAAAAAAAAAAAAAAAAgABAAAAAQAAgkJnUV8PPPUACwQAAAAAAOCVrG8AAAAA4JWsbwAAAAAD9AP0AAAACAACAAAAAAAAAAEAAAACABoAAwAAAAAAAgAAAAoACgAAAP8AAAAAAAAAAQQAAZAABQAAAokCzAAAAI8CiQLMAAAB6wAyAQgAAAIABQMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUGZFZABA5wHnAQQAAAAAXAQAAAAAAAABAAAAAAAABAAAAAQAAAAAAAACAAAAAwAAABQAAwABAAAAFAAEACIAAAAEAAQAAQAA5wH//wAA5wH//wAAAAEABAAAAAEAAAAAAAAALgAAAAMAAAAAA/QD9AACAAYAGQAANyUnNxcBJzcHFz8DNS8HDwIMASTqO+kB0+qpbulyBQQCAgQFpggJCQoJCQkMOuo66QHS6alu6XIICQoJCgkIpgcEAwEBAwQAAAAAAAASAN4AAQAAAAAAAAABAAAAAQAAAAAAAQAHAAEAAQAAAAAAAgAHAAgAAQAAAAAAAwAHAA8AAQAAAAAABAAHABYAAQAAAAAABQALAB0AAQAAAAAABgAHACgAAQAAAAAACgAsAC8AAQAAAAAACwASAFsAAwABBAkAAAACAG0AAwABBAkAAQAOAG8AAwABBAkAAgAOAH0AAwABBAkAAwAOAIsAAwABBAkABAAOAJkAAwABBAkABQAWAKcAAwABBAkABgAOAL0AAwABBAkACgBYAMsAAwABBAkACwAkASMgc2ItaWNvblJlZ3VsYXJzYi1pY29uc2ItaWNvblZlcnNpb24gMS4wc2ItaWNvbkZvbnQgZ2VuZXJhdGVkIHVzaW5nIFN5bmNmdXNpb24gTWV0cm8gU3R1ZGlvd3d3LnN5bmNmdXNpb24uY29tACAAcwBiAC0AaQBjAG8AbgBSAGUAZwB1AGwAYQByAHMAYgAtAGkAYwBvAG4AcwBiAC0AaQBjAG8AbgBWAGUAcgBzAGkAbwBuACAAMQAuADAAcwBiAC0AaQBjAG8AbgBGAG8AbgB0ACAAZwBlAG4AZQByAGEAdABlAGQAIAB1AHMAaQBuAGcAIABTAHkAbgBjAGYAdQBzAGkAbwBuACAATQBlAHQAcgBvACAAUwB0AHUAZABpAG8AdwB3AHcALgBzAHkAbgBjAGYAdQBzAGkAbwBuAC4AYwBvAG0AAAAAAgAAAAAAAAAKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAQIBAwAHZWRpdF8wMwAAAAAA) format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    .e-image-editor-icons {
+        font-family: 'image-editor-icon' !important;
+        speak: none;
+        font-size: 55px;
+        font-style: normal;
+        font-weight: normal;
+        font-variant: normal;
+        text-transform: none;
+        line-height: 1;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    .tailwind .e-custom-icon::before,
+    .tailwind-dark .e-custom-icon::before {
+        top: 6px;
+    }
+
+    #custom-edit:hover {
+        cursor: pointer;
+    }
+
+    canvas#img-canvas {
+        border-radius: 50%;
+        border: 4px solid darkgrey;
+    }
+
+    .e-img-custom-open {
+        float: left;
+        margin-left: 0 !important;
+    }
+
+    .e-img-custom-reset {
+        float: left;
+    }
+
+    .e-bigger #profile-dialog .e-dlg-header {
+        font-size: 18px !important;
+    }
+
+    /* .e-img-editor-sample {
+                min-height: 450px;
+            } */
+
+    .highcontrast .e-custom-img-btn,
+    .fabric .e-custom-img-btn,
+    .fabric-dark .e-custom-img-btn {
+        padding: 2px 10px !important;
+    }
+
+    .e-bigger .e-custom-img-btn {
+        font-size: 14px !important;
+        padding: 6px 10px !important;
+    }
+
+    .e-bigger.highcontrast .e-custom-img-btn,
+    .e-bigger.fabric .e-custom-img-btn,
+    .e-bigger.fabric-dark .e-custom-img-btn,
+    .e-bigger.material .e-custom-img-btn,
+    .e-bigger.material-dark .e-custom-img-btn {
+        padding: 3px 10px !important;
+    }
+
+    .e-bigger.bootstrap .e-custom-img-btn,
+    .e-bigger.bootstrap-dark .e-custom-img-btn {
+        padding: 1px 10px !important;
+    }
+
+    .dialogContent {
+        height: 100%;
+    }
+
+    .e-img-editor-sample.e-hide {
+        display: none;
+    }
+</style>
